@@ -1,5 +1,5 @@
 schema: workforce.upstream-lock/v1
-updated_at: 2026-09-06T00:00:00Z
+updated_at: 2026-09-06T12:00:00Z
 owner: Tim
 fork_policy: >-
   One-time fork; owned-product evolution (pack D-01, D-02, ADR-027).
@@ -47,36 +47,57 @@ upstreams:
   # placeholders until each is reviewed per runbook §1.
   session-teleport:
     source: https://dsh.fish/a/mattheliu-session-teleport
-    commit_or_version: REPLACE
-    license: REVIEW_REQUIRED
+    commit_or_version: not specified on dsh.fish page (pinned to full commit required per page; timestamp 2026-08-31T08:04:55.094Z)
+    license: "BSD-3-Clause — observed 2026-09-06; owner review per runbook §1 pending"
     integration: deep-fork
+    notes: "Fetched from https://dsh.fish/a/mattheliu-session-teleport. License stated on page. Recorded as observed; pending owner's runbook §1 review."
+    notes: "Fetched from https://dsh.fish/a/mattheliu-session-teleport. License stated on page. Recorded as observed; pending owner's runbook §1 review."
+    notes: "Fetched from https://dsh.fish/a/mattheliu-session-teleport. License stated on page. Recorded as observed; pending owner's runbook §1 review."
   task-passport:
     source: https://dsh.fish/a/task-passport
-    commit_or_version: REPLACE
-    license: REVIEW_REQUIRED
+    commit_or_version: c9c31c4caa63771f21919c27fd5a14b2a3eb511f
+    license: "MIT — observed 2026-09-06; owner review per runbook §1 pending"
     integration: protocol-reference
+    notes: "Fetched from https://dsh.fish/a/task-passport. Version 0.3.0 also referenced. Recorded as observed; pending owner's runbook §1 review."
+    notes: "Fetched from https://dsh.fish/a/task-passport. Version 0.3.0 also referenced. Recorded as observed; pending owner's runbook §1 review."
+    notes: "Fetched from https://dsh.fish/a/task-passport. Version 0.3.0 also referenced. Recorded as observed; pending owner's runbook §1 review."
   mnemon:
     repo: mnemon-dev/mnemon
-    commit: REPLACE_WITH_COMMIT
-    license: Apache-2.0
+    commit: 9c8e760e0143f5d66b5d57609a60e1c4e620da96
+    license: "Apache-2.0 — observed 2026-09-06; owner review per runbook §1 pending"
     integration: direct-provider-and-reference
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
   agent-sign:
     repo: nolabs-ai/agent-sign
-    commit: REPLACE_WITH_COMMIT
-    license: Apache-2.0
+    commit: a3641a5e9f14fdfc7d12bacec63d5f56f4fa1749
+    license: "Apache-2.0 — observed 2026-09-06; owner review per runbook §1 pending"
     integration: direct
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
   deepfabric:
     repo: nolabs-ai/deepfabric
-    commit: REPLACE_WITH_COMMIT
-    license: Apache-2.0
+    commit: a426efcff90685498d9888a96355efee3efd3a94
+    license: "Apache-2.0 — observed 2026-09-06; owner review per runbook §1 pending"
     integration: direct
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
   agentup:
     repo: nolabs-ai/AgentUp
-    commit: REPLACE_WITH_COMMIT
-    license: Apache-2.0
+    commit: 19b5711f10b26f965eafd1d0a99da450dbc2e053
+    license: "Apache-2.0 — observed 2026-09-06; owner review per runbook §1 pending"
     integration: provider
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
   vexdb-lite:
     repo: VexDB-THU/VexDB-Lite
-    commit: REPLACE_WITH_COMMIT
-    license: MIT
+    commit: dd19a088967e0160a7918437d69ec24f34835015
+    license: "MIT — observed 2026-09-06; owner review per runbook §1 pending"
     integration: optional-provider
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
+    notes: "LICENSE file present at commit. Recorded as observed; pending owner's runbook §1 review."
