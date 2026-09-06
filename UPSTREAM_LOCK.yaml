@@ -1,0 +1,82 @@
+schema: workforce.upstream-lock/v1
+updated_at: 2026-09-06T00:00:00Z
+owner: Tim
+fork_policy: >-
+  One-time fork; owned-product evolution (pack D-01, D-02, ADR-027).
+  Upstream tracking is not required. This lock records the fork point for
+  provenance (plan 18) and seam conformance, not for synchronization.
+
+upstreams:
+  deepseek-harness:
+    repo: deepseek-ai/deepseek-harness
+    default_branch: master
+    commit: d347e703908d0406b7a7ef80e3a0e594d86b2215
+    tag: dsh-v0.1.3-alpha.1
+    license: "MIT (LICENSE file present; GitHub API reports no SPDX id) — reviewed by owner 2026-09-06"
+    local_fork: Tim-ReJet/deepseek-harness-workforce
+    fork_branch: workforce/main
+    build: "see package.json scripts: build, check:all, check:ci"
+    layout: [apps, packages]
+    seams:
+      - profile-bundle-patch-composition
+      - session-event-wire-format
+      - session-persistence
+      - tool-execution-hooks
+      - workflow-engine
+      - subagent-providers
+      - sdk-acp-entrypoints
+  nono:
+    repo: nolabs-ai/nono
+    default_branch: main
+    commit: 77725089a4607c865cfde63679c43259e3a7ee70
+    tag: v0.75.0
+    license: "Apache-2.0 (LICENSE file present; GitHub API reports no SPDX id) — reviewed by owner 2026-09-06"
+    local_fork: Tim-ReJet/nono-workforce
+    fork_branch: workforce/main
+    build: "cargo build (Cargo.toml); make (Makefile)"
+    crates: [nono, nono-cli, nono-proxy, nono-test-support]
+    seams:
+      - capability-manifest
+      - profiles-packs
+      - supervisor-protocol
+      - proxy-credential-routes
+      - audit-attestation
+      - trust-provenance
+      - spiffe
+  # Vendored projects below are not yet pinned: commit values remain
+  # placeholders until each is reviewed per runbook §1.
+  session-teleport:
+    source: https://dsh.fish/a/mattheliu-session-teleport
+    commit_or_version: REPLACE
+    license: REVIEW_REQUIRED
+    integration: deep-fork
+  task-passport:
+    source: https://dsh.fish/a/task-passport
+    commit_or_version: REPLACE
+    license: REVIEW_REQUIRED
+    integration: protocol-reference
+  mnemon:
+    repo: mnemon-dev/mnemon
+    commit: REPLACE_WITH_COMMIT
+    license: Apache-2.0
+    integration: direct-provider-and-reference
+  agent-sign:
+    repo: nolabs-ai/agent-sign
+    commit: REPLACE_WITH_COMMIT
+    license: Apache-2.0
+    integration: direct
+  deepfabric:
+    repo: nolabs-ai/deepfabric
+    commit: REPLACE_WITH_COMMIT
+    license: Apache-2.0
+    integration: direct
+  agentup:
+    repo: nolabs-ai/AgentUp
+    commit: REPLACE_WITH_COMMIT
+    license: Apache-2.0
+    integration: provider
+  vexdb-lite:
+    repo: VexDB-THU/VexDB-Lite
+    commit: REPLACE_WITH_COMMIT
+    license: MIT
+    integration: optional-provider
