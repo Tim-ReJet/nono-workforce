@@ -844,6 +844,44 @@
       "network": { "block": false, "network_profile": "developer" },
       "workdir": { "access": "readwrite" },
       "interactive": false
+    },
+    "workforce-host": {
+      "extends": "default",
+      "meta": {
+        "name": "workforce-host",
+        "version": "1.0.0",
+        "description": "Workforce host: process that supervises a locally admitted Cell under deployment-bound identity (no SPIFFE/SPIRE trust domain; ADR-028 D-12). Carries no workdir or network access of its own.",
+        "author": "workforce"
+      },
+      "groups": {
+        "include": []
+      },
+      "security": {
+        "signal_mode": "isolated"
+      },
+      "filesystem": {},
+      "network": { "block": true },
+      "workdir": { "access": "none" },
+      "interactive": false
+    },
+    "cell-repository": {
+      "extends": "default",
+      "meta": {
+        "name": "cell-repository",
+        "version": "1.0.0",
+        "description": "Workforce Cell profile for ordinary repository-editing tasks admitted under the local fast path (ADR-028 D-41): scoped read-write on the admitted working directory, proxy-only network, no default credential grant.",
+        "author": "workforce"
+      },
+      "groups": {
+        "include": []
+      },
+      "security": {
+        "signal_mode": "isolated"
+      },
+      "filesystem": {},
+      "network": { "block": false, "network_profile": "developer" },
+      "workdir": { "access": "readwrite" },
+      "interactive": false
     }
   }
 }

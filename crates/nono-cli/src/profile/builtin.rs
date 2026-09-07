@@ -85,6 +85,8 @@ mod tests {
         let profiles = list_builtin();
         assert!(profiles.contains(&"default".to_string()));
         assert!(profiles.contains(&"linux-host-compat".to_string()));
+        assert!(profiles.contains(&"workforce-host".to_string()));
+        assert!(profiles.contains(&"cell-repository".to_string()));
         // Profiles that ship via registry packs instead of as built-ins:
         //   claude-code → nolabs-ai/claude   (formerly always-further/claude, removed v0.43.0)
         //   codex       → nolabs-ai/codex    (formerly always-further/codex, removed v0.43.0)
@@ -229,6 +231,74 @@ mod tests {
                 .include
                 .contains(&"linux_temp_read".to_string()),
             "linux-host-compat should include linux_temp_read"
+        );
+    }
+
+    /// NONO-001: `workforce-host` is the Workforce-added global profile that
+    /// hosts a locally supervised Cell under deployment-bound identity (no
+    /// SPIFFE/SPIRE — ADR-028 D-12 amended default). It must resolve, must
+    /// not grant workdir or network access, and must not add filesystem
+    /// entries beyond what it inherits from `default` (which is empty).
+    #[test]
+    fn test_workforce_host_profile_resolves_with_no_workdir_or_network() {
+        let profile = get_builtin("workforce-host").expect("workforce-host should resolve");
+        assert_eq!(profile.meta.name, "workforce-host");
+        assert_eq!(profile.workdir.access, WorkdirAccess::None);
+        assert!(
+            profile.network.block,
+            "workforce-host must keep network.block = true"
+        );
+        let default = get_builtin("default").expect("default profile");
+        assert_eq!(
+            profile.filesystem.allow, default.filesystem.allow,
+            "workforce-host must not add filesystem.allow beyond default"
+        );
+        assert!(
+            profile.env_credentials.mappings.is_empty(),
+            "workforce-host must not set a default credential grant"
+        );
+    }
+
+    /// NONO-001: `cell-repository` is the Workforce-added Cell profile for an
+    /// ordinary repository-editing task admitted under the local fast path
+    /// (ADR-028 D-41). It must resolve, must be able to read+write the
+    /// admitted working directory, must route network through the proxy
+    /// (never `Unrestricted`), must still inherit `default`'s deny_* groups,
+    /// and must not set a default credential grant.
+    #[test]
+    fn test_cell_repository_profile_resolves_scoped_readwrite_proxy_only() {
+        let profile = get_builtin("cell-repository").expect("cell-repository should resolve");
+        assert_eq!(profile.meta.name, "cell-repository");
+        assert_ne!(
+            profile.workdir.access,
+            WorkdirAccess::None,
+            "cell-repository must be able to edit its admitted working directory"
+        );
+        assert_eq!(profile.workdir.access, WorkdirAccess::ReadWrite);
+        assert!(
+            !profile.network.block,
+            "cell-repository needs network for an ordinary repository task"
+        );
+        assert!(
+            profile.network.resolved_network_profile().is_some(),
+            "cell-repository network must be routed through a named proxy profile, not left Unrestricted"
+        );
+        for group in [
+            "deny_credentials",
+            "deny_keychains_macos",
+            "deny_keychains_linux",
+            "deny_shell_history",
+            "deny_shell_configs",
+        ] {
+            assert!(
+                profile.groups.include.contains(&group.to_string()),
+                "cell-repository must inherit default's '{}' group",
+                group
+            );
+        }
+        assert!(
+            profile.env_credentials.mappings.is_empty(),
+            "cell-repository must not set a default credential grant"
         );
     }
 
