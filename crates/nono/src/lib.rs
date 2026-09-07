@@ -85,14 +85,18 @@ pub use keystore::{
     validate_apple_password_uri, validate_bw_uri, validate_destination_env_var, validate_env_uri,
     validate_file_uri, validate_keyring_uri, validate_op_uri,
 };
+pub use manifest_convert::capability_set_with_coverage;
 pub use net_filter::{FilterResult, HostFilter};
 pub use path::try_canonicalize;
 pub use resource::ResourceLimits;
+pub use sandbox::{
+    CoverageDomain, CoverageResult, EnforcementCoverageReport, RequirementCoverage, Sandbox,
+    SupportInfo,
+};
 #[cfg(target_os = "linux")]
 pub use sandbox::{
     DetectedAbi, LandlockScopePolicy, SeccompOpts, detect_abi, is_wsl2, landlock_scope_policy,
 };
-pub use sandbox::{Sandbox, SupportInfo};
 pub use scrub::{
     ScrubPolicy, ScrubPolicyDiff, scrub_argv, scrub_argv_with_policy, scrub_env_name,
     scrub_env_name_with_policy, scrub_env_value, scrub_env_value_with_policy, scrub_header,
