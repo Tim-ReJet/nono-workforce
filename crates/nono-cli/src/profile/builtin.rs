@@ -559,4 +559,81 @@ mod tests {
             );
         }
     }
+
+    /// Regression test (NONO-003 round-6): `cell-repository`'s declared
+    /// `filesystem.write`/`filesystem.write_file` entries must each match
+    /// what `FsCapability::new_dir`/`new_file` will actually accept when
+    /// the profile is resolved through `nono profile show --format
+    /// manifest` and then `nono run --config <manifest>` — the launcher's
+    /// real path (providers/ordinary-path-launcher.ts, LAUNCH-001).
+    ///
+    /// That resolution path (`resolve_to_manifest` in profile_cmd.rs, read
+    /// here but not owned by this packet) canonicalizes every grant and
+    /// requires it to both exist on the current platform and match its
+    /// declared type: `write` entries must resolve to a directory
+    /// (`FsCapability::new_dir`), `write_file` entries must resolve to a
+    /// non-directory (`FsCapability::new_file`) — neither call skips a
+    /// missing path the way the more forgiving `CapabilitySet::from_profile`
+    /// path used by the tests above does. `profile.filesystem.write` /
+    /// `write_file` are already platform-filtered by the time
+    /// `get_builtin` returns (conditional `"when"` entries are dropped at
+    /// deserialize time — see `deserialize_conditional_path_vec` in
+    /// profile/mod.rs), so this test only has to check what's left.
+    ///
+    /// A prior edit put Linux-only device nodes (`/dev/full`, `/dev/pts`,
+    /// `/proc/self/fd`) in the list unconditionally and typed
+    /// character-device files (`/dev/null`, `/dev/zero`, `/dev/tty`,
+    /// `/dev/stdout`, `/dev/stderr`) as directories; that combination made
+    /// every ordinary-path launch through `nono run --config` fail closed
+    /// on macOS ("Path does not exist: /dev/full" / "expected a
+    /// directory"), while creating no session per LAUNCH-001 semantics.
+    /// This test fails the same way that regression did, without needing
+    /// to build a manifest or a `CapabilitySet`.
+    #[test]
+    fn test_cell_repository_write_grants_exist_and_match_declared_type_on_this_platform() {
+        let profile = get_builtin("cell-repository").expect("cell-repository should resolve");
+
+        for raw in &profile.filesystem.write {
+            let path = std::path::Path::new(raw);
+            let canonical = path.canonicalize().unwrap_or_else(|e| {
+                panic!(
+                    "cell-repository's filesystem.write grant '{}' does not exist on this \
+                     platform ({e}) — a platform-specific path must be gated with a \
+                     `\"when\"` clause in policy.json so it is only listed where it exists, \
+                     or `nono run --config <manifest>` fails closed on this platform \
+                     (FsCapability::new_dir: PathNotFound)",
+                    raw
+                )
+            });
+            assert!(
+                canonical.is_dir(),
+                "cell-repository's filesystem.write grant '{}' resolves to a non-directory \
+                 node — `write` entries are resolved with FsCapability::new_dir, which \
+                 requires a directory; move this path to `filesystem.write_file` instead, \
+                 or `nono run --config <manifest>` fails closed (ExpectedDirectory)",
+                raw
+            );
+        }
+
+        for raw in &profile.filesystem.write_file {
+            let path = std::path::Path::new(raw);
+            let canonical = path.canonicalize().unwrap_or_else(|e| {
+                panic!(
+                    "cell-repository's filesystem.write_file grant '{}' does not exist on \
+                     this platform ({e}) — gate it with a `\"when\"` clause in policy.json, \
+                     or `nono run --config <manifest>` fails closed on this platform \
+                     (FsCapability::new_file: PathNotFound)",
+                    raw
+                )
+            });
+            assert!(
+                !canonical.is_dir(),
+                "cell-repository's filesystem.write_file grant '{}' resolves to a \
+                 directory — `write_file` entries are resolved with FsCapability::new_file, \
+                 which rejects directories; move this path to `filesystem.write` instead, \
+                 or `nono run --config <manifest>` fails closed (ExpectedFile)",
+                raw
+            );
+        }
+    }
 }

@@ -889,15 +889,17 @@
         "read": ["/etc"],
         "write": [
           { "path": "/dev", "when": "macos" },
+          "/dev/fd",
+          { "path": "/dev/pts", "when": "linux" },
+          { "path": "/proc/self/fd", "when": "linux" }
+        ],
+        "write_file": [
           "/dev/null",
           "/dev/zero",
-          "/dev/full",
           "/dev/tty",
           "/dev/stdout",
           "/dev/stderr",
-          "/dev/fd",
-          "/dev/pts",
-          "/proc/self/fd"
+          { "path": "/dev/full", "when": "linux" }
         ]
       },
       "network": { "block": false, "network_profile": "developer" },
