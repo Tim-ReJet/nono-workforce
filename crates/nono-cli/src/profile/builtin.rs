@@ -302,6 +302,179 @@ mod tests {
         );
     }
 
+    /// NONO-003: `cell-repository` profile hygiene (BATCH_3_REPORT.md §7
+    /// items 6-7, §5.2 (e)-(f), §5.1 PR-02).
+    ///
+    /// Asserts on the resolved `Profile` struct and the resolved
+    /// `CapabilitySet` built from it (not the `--format manifest` JSON
+    /// display, which is a separate, lossier serialization path):
+    ///
+    /// 1. `filesystem.read` carries the profile-owned `/etc` grant directly
+    ///    (TLS-trust intent stated by cell-repository itself, not only
+    ///    inherited incidentally through `system_read_macos`).
+    /// 2. The merged, effective group set no longer includes
+    ///    `system_write_macos`/`system_write_linux` (the source of the
+    ///    inherited blanket temp-write grant) or the deprecated,
+    ///    not-enforced-for-child-processes `dangerous_commands*` groups.
+    /// 3. The resolved `CapabilitySet` grants no write access on
+    ///    `/private/tmp`, `/tmp`, `/private/var/folders`, `/var/folders`,
+    ///    or a `$TMPDIR`-resolved path, while still granting read access
+    ///    reaching `/etc` (via its canonicalized `/private/etc`) and write
+    ///    access on the narrow device-node set needed to run at all.
+    /// 4. The resolved `CapabilitySet` carries no `blocked_commands` —
+    ///    `security.blocked_commands` is schema-deprecated and "not
+    ///    enforced for child processes", so cell-repository should not
+    ///    claim a command-denylist boundary it cannot enforce.
+    #[test]
+    fn test_cell_repository_profile_hygiene_etc_read_no_tmp_write_no_dangerous_commands() {
+        use crate::capability_ext::CapabilitySetExt;
+
+        let profile = get_builtin("cell-repository").expect("cell-repository should resolve");
+
+        // (1) Profile-owned /etc read grant, stated directly (not only via
+        // an inherited group).
+        assert!(
+            profile.filesystem.read.iter().any(|p| p == "/etc"),
+            "cell-repository must declare its own '/etc' read grant; got {:?}",
+            profile.filesystem.read
+        );
+
+        // (2) Merged/effective groups drop the blanket-temp-write and
+        // dangerous_commands* sources.
+        for excluded in [
+            "system_write_macos",
+            "system_write_linux",
+            "dangerous_commands",
+            "dangerous_commands_macos",
+            "dangerous_commands_linux",
+        ] {
+            assert!(
+                !profile.groups.include.contains(&excluded.to_string()),
+                "cell-repository's merged groups must not include '{}'; got {:?}",
+                excluded,
+                profile.groups.include
+            );
+        }
+        // Still inherits `default`'s read-only system paths (unaffected by
+        // this change) so the profile stays usable.
+        assert!(
+            profile
+                .groups
+                .include
+                .contains(&"system_read_macos".to_string())
+        );
+
+        // (3) + (4): resolve an actual CapabilitySet the way the sandbox
+        // launcher would, and inspect the concrete grants.
+        let _guard = match crate::test_env::ENV_LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let home = tempfile::Builder::new()
+            .prefix("nono-cell-repository-hygiene-home-")
+            .tempdir_in(std::env::current_dir().expect("cwd"))
+            .expect("home tempdir");
+        std::fs::create_dir_all(home.path().join("Library/Keychains")).expect("mkdir keychains");
+        let _env = crate::test_env::EnvVarGuard::set_all(&[
+            ("HOME", home.path().to_str().expect("home utf8")),
+            (
+                "XDG_CONFIG_HOME",
+                home.path().join(".config").to_str().expect("config utf8"),
+            ),
+            (
+                "XDG_DATA_HOME",
+                home.path()
+                    .join(".local/share")
+                    .to_str()
+                    .expect("data utf8"),
+            ),
+            (
+                "XDG_STATE_HOME",
+                home.path()
+                    .join(".local/state")
+                    .to_str()
+                    .expect("state utf8"),
+            ),
+            (
+                "XDG_CACHE_HOME",
+                home.path().join(".cache").to_str().expect("cache utf8"),
+            ),
+        ]);
+
+        let workdir = tempfile::Builder::new()
+            .prefix("nono-cell-repository-hygiene-workdir-")
+            .tempdir_in(std::env::current_dir().expect("cwd"))
+            .expect("workdir");
+        let args = crate::cli::SandboxArgs::default();
+
+        let prepared = nono::CapabilitySet::from_profile(&profile, workdir.path(), &args)
+            .expect("cell-repository should build capabilities");
+        let caps = prepared.caps;
+
+        let tmp_like = [
+            "/private/tmp",
+            "/tmp",
+            "/private/var/folders",
+            "/var/folders",
+        ];
+        for cap in caps.fs_capabilities() {
+            let resolved = cap.resolved.to_string_lossy();
+            let is_tmp_like = tmp_like.iter().any(|p| resolved.starts_with(p));
+            let is_tmpdir = std::env::var("TMPDIR")
+                .ok()
+                .and_then(|t| std::fs::canonicalize(&t).ok())
+                .is_some_and(|canon| cap.resolved.starts_with(&canon));
+            if is_tmp_like || is_tmpdir {
+                assert_ne!(
+                    cap.access,
+                    nono::AccessMode::Write,
+                    "cell-repository must not grant write on tmp-like path {}",
+                    cap.resolved.display()
+                );
+                assert_ne!(
+                    cap.access,
+                    nono::AccessMode::ReadWrite,
+                    "cell-repository must not grant readwrite on tmp-like path {}",
+                    cap.resolved.display()
+                );
+            }
+        }
+
+        // The /etc grant is reachable — its canonical target /private/etc
+        // is read-accessible (macOS resolves /etc -> /private/etc; on
+        // Linux /etc is not a symlink so this is the same path).
+        assert!(
+            caps.fs_capabilities().iter().any(|cap| {
+                let resolved = cap.resolved.to_string_lossy();
+                (resolved == "/etc" || resolved == "/private/etc")
+                    && matches!(cap.access, nono::AccessMode::Read | nono::AccessMode::ReadWrite)
+            }),
+            "cell-repository must grant read reaching /etc"
+        );
+
+        // Narrow device-write set still present so the sandboxed process
+        // can run at all (stdout/stderr/null redirection etc.).
+        assert!(
+            caps.fs_capabilities().iter().any(|cap| {
+                let resolved = cap.resolved.to_string_lossy();
+                (resolved == "/dev/null" || resolved == "/dev")
+                    && matches!(
+                        cap.access,
+                        nono::AccessMode::Write | nono::AccessMode::ReadWrite
+                    )
+            }),
+            "cell-repository must still grant device write access to run"
+        );
+
+        // (4) No enforced-nowhere command denylist claimed.
+        assert!(
+            caps.blocked_commands().is_empty(),
+            "cell-repository must not carry blocked_commands (schema-deprecated, \
+             not enforced for child processes); got {:?}",
+            caps.blocked_commands()
+        );
+    }
+
     /// Regression test: verifies that all built-in profiles — regardless of
     /// their signal_mode setting — will produce Seatbelt rules that allow
     /// signaling child processes within the same sandbox.
