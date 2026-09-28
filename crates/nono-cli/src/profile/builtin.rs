@@ -587,11 +587,41 @@ mod tests {
     /// every ordinary-path launch through `nono run --config` fail closed
     /// on macOS ("Path does not exist: /dev/full" / "expected a
     /// directory"), while creating no session per LAUNCH-001 semantics.
+    /// NONO-004: on Linux, `/dev/stdout` and `/dev/stderr` often
+    /// canonicalize to `/proc/self/fd/{1,2}` pipes, which breaks
+    /// `FsCapability::new_file` during manifest resolution — gate them
+    /// with `"when": "macos"` in policy.json; Linux device coverage stays
+    /// via `/dev/pts`, `/proc/self/fd`, and `/dev/full`.
     /// This test fails the same way that regression did, without needing
     /// to build a manifest or a `CapabilitySet`.
     #[test]
     fn test_cell_repository_write_grants_exist_and_match_declared_type_on_this_platform() {
         let profile = get_builtin("cell-repository").expect("cell-repository should resolve");
+
+        #[cfg(target_os = "linux")]
+        {
+            assert!(
+                !profile
+                    .filesystem
+                    .write_file
+                    .iter()
+                    .any(|p| p == "/dev/stdout" || p == "/dev/stderr"),
+                "cell-repository must not list /dev/stdout or /dev/stderr in write_file on \
+                 Linux (NONO-004); they canonicalize to fd pipes and break manifest resolution"
+            );
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            assert!(
+                profile.filesystem.write_file.contains(&"/dev/stdout".to_string()),
+                "cell-repository must retain /dev/stdout in write_file on macOS"
+            );
+            assert!(
+                profile.filesystem.write_file.contains(&"/dev/stderr".to_string()),
+                "cell-repository must retain /dev/stderr in write_file on macOS"
+            );
+        }
 
         for raw in &profile.filesystem.write {
             let path = std::path::Path::new(raw);
