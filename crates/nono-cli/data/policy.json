@@ -897,8 +897,8 @@
           "/dev/null",
           "/dev/zero",
           "/dev/tty",
-          "/dev/stdout",
-          "/dev/stderr",
+          { "path": "/dev/stdout", "when": "macos" },
+          { "path": "/dev/stderr", "when": "macos" },
           { "path": "/dev/full", "when": "linux" }
         ]
       },
